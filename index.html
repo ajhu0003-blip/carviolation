@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>車牌誤停紀錄系統</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        /* Hide scrollbars for slick mobile feel */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Glassmorphism effects */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: background 0.3s, border-color 0.3s;
+        }
+        .glass-input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: background 0.3s, border-color 0.3s, color 0.3s;
+        }
+        /* Pulse Animation for Frequent Offender Alert */
+        @keyframes alertPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+        .pulse-alert {
+            animation: alertPulse 1.8s infinite ease-in-out;
+        }
+
+        /* Light Mode Styling Overrides */
+        body.light-mode {
+            background-color: #f1f5f9;
+            color: #0f172a;
+        }
+        .light-mode #phone-container {
+            background-color: #ffffff;
+            border-color: #cbd5e1;
+        }
+        .light-mode .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        }
+        .light-mode .glass-input {
+            background: rgba(241, 245, 249, 0.9);
+            border: 1px solid rgba(203, 213, 225, 0.8);
+            color: #0f172a;
+        }
+        .light-mode .glass-input::placeholder {
+            color: #94a3b8;
+        }
+        .light-mode nav.glass-card,
+        .light-mode header.glass-card {
+            background: rgba(255, 255, 255, 0.92);
+            border-color: #e2e8f0;
+        }
+        .light-mode .text-white { color: #0f172a !important; }
+        .light-mode .text-slate-100 { color: #1e293b !important; }
+        .light-mode .text-slate-200 { color: #334155 !important; }
+        .light-mode .text-slate-300 { color: #475569 !important; }
+        .light-mode .text-slate-400 { color: #64748b !important; }
+        .light-mode .text-amber-400 { color: #d97706 !important; }
+        .light-mode .bg-slate-900 { background-color: #ffffff !important; }
+        .light-mode .bg-slate-800 { background-color: #f1f5f9 !important; }
+        .light-mode .border-slate-800 { border-color: #e2e8f0 !important; }
+        .light-mode .border-slate-700 { border-color: #cbd5e1 !important; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-0 sm:p-4 bg-slate-950">
+
+    <!-- iPhone Frame Container -->
+    <div id="phone-container" class="relative w-full max-w-[430px] h-[100vh] sm:h-[932px] sm:max-h-[90vh] bg-slate-900 sm:rounded-[50px] shadow-2xl border-0 sm:border-[8px] border-slate-800 overflow-hidden flex flex-col justify-between select-none">
+        
+        <!-- Top Dynamic Island / Notch Mockup for iPhone aesthetics -->
+        <div class="hidden sm:flex absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-b-2xl z-50 items-center justify-center">
+            <div class="w-3 h-3 bg-slate-900 rounded-full mr-2"></div>
+            <div class="w-2 h-2 bg-blue-900/50 rounded-full"></div>
+        </div>
+
+        <!-- App Header Bar -->
+        <header class="pt-6 sm:pt-8 pb-3 px-5 glass-card border-b border-slate-800 z-40 flex items-center justify-between">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <h1 class="text-lg font-bold tracking-wide text-white">停車場誤停查核系統</h1>
+                </div>
+                <p class="text-xs text-slate-400">停車場管理專用版 (9:16)</p>
+            </div>
+            <div class="flex gap-2">
+                <!-- Theme Switcher Button -->
+                <button onclick="toggleTheme()" id="theme-toggle-btn" title="切換深淺色模式" class="w-9 h-9 rounded-full bg-slate-800/80 hover:bg-slate-700 flex items-center justify-center text-amber-400 transition-all border border-slate-700/50">
+                    <i class="fa-solid fa-sun text-sm"></i>
+                </button>
+                <button onclick="switchTab('analytics')" class="w-9 h-9 rounded-full bg-slate-800/80 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition-all border border-slate-700/50">
+                    <i class="fa-solid fa-chart-pie text-sm"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Scrollable Body Area -->
+        <main class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4 relative z-10">
+            
+            <!-- VIEW 1: RECORD ENTRY TAB (預設頁面) -->
+            <section id="tab-record" class="space-y-4">
+                
+                <!-- Plate Input Card -->
+                <div class="glass-card rounded-2xl p-4 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-car text-blue-400"></i> 輸入車牌號碼
+                        </label>
+                        <span id="live-check-status" class="text-xs font-medium text-slate-500">等待輸入...</span>
+                    </div>
+                    
+                    <div class="relative">
+                        <input type="text" id="plate-input" placeholder="例如: ABC1234" 
+                            class="w-full text-center text-3xl font-black tracking-widest uppercase py-3 px-4 rounded-xl glass-input text-amber-400 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 border border-slate-700"
+                            maxlength="10" oninput="handlePlateInputChange(this)">
+                        <button onclick="clearPlateInput()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 p-2">
+                            <i class="fa-solid fa-circle-xmark text-lg"></i>
+                        </button>
+                    </div>
+
+                    <!-- Real-Time Warning Banner (Dynamic) -->
+                    <div id="duplicate-warning" class="hidden rounded-xl p-3 bg-red-950/80 border border-red-500/50 text-red-200 pulse-alert space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2 text-red-400 font-bold text-sm">
+                                <i class="fa-solid fa-triangle-exclamation text-base"></i>
+                                <span>🚨 警告：此為經常誤停車輛！</span>
+                            </div>
+                            <span id="warning-badge-count" class="bg-red-600 text-white text-xs font-black px-2 py-0.5 rounded-full">已紀錄 0 次</span>
+                        </div>
+                        <p id="warning-details" class="text-xs text-red-300/90 leading-relaxed"></p>
+                    </div>
+
+                    <!-- Owner Title / Surname Input -->
+                    <div class="space-y-2 pt-1">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs text-slate-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-user text-blue-400"></i> 車主稱呼 / 姓氏
+                            </label>
+                            <button onclick="openPresetModal('owner')" class="text-[10px] text-blue-400 hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-gear"></i> 編輯稱呼快捷
+                            </button>
+                        </div>
+                        <input type="text" id="owner-input" placeholder="例如：黃大哥、白小姐、陳先生" 
+                            class="w-full text-sm py-2.5 px-3 rounded-lg glass-input text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 border border-slate-700/80">
+                        
+                        <!-- Fast Preset Owner Titles (Dynamic) -->
+                        <div id="owner-presets-container" class="flex flex-wrap gap-1.5 pt-1">
+                            <!-- Dynamic populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Note / Remark Input -->
+                    <div class="space-y-2 pt-1">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs text-slate-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-note-sticky text-amber-400"></i> 誤停備註 / 說明
+                            </label>
+                            <button onclick="openPresetModal('note')" class="text-[10px] text-amber-400 hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-gear"></i> 編輯備註快捷
+                            </button>
+                        </div>
+                        <input type="text" id="note-input" placeholder="例如：佔用充電格、跨線停放、超時停放" 
+                            class="w-full text-sm py-2.5 px-3 rounded-lg glass-input text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 border border-slate-700/80">
+                        
+                        <!-- Fast Preset Notes (Dynamic) -->
+                        <div id="note-presets-container" class="flex flex-wrap gap-1.5 pt-1">
+                            <!-- Dynamic populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button onclick="submitRecord()" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all">
+                        <i class="fa-solid fa-plus-circle text-lg"></i>
+                        <span>登記誤停紀錄</span>
+                    </button>
+                </div>
+
+                <!-- Recent Entry Quick List -->
+                <div class="glass-card rounded-2xl p-4 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-clock-rotate-left text-amber-400"></i> 最近登錄紀錄
+                        </h3>
+                        <span id="total-count-badge" class="text-xs text-slate-400">共 0 筆</span>
+                    </div>
+
+                    <div id="recent-list-container" class="space-y-2">
+                        <!-- Dynamic items loaded here -->
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- VIEW 2: HISTORY LIST TAB -->
+            <section id="tab-history" class="hidden space-y-3">
+                <!-- Search and Filter Header -->
+                <div class="glass-card rounded-2xl p-3 space-y-2">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                        <input type="text" id="search-input" placeholder="搜尋車牌或車主稱呼..." oninput="filterHistoryList()"
+                            class="w-full pl-9 pr-4 py-2 text-sm rounded-xl glass-input text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 border border-slate-700">
+                    </div>
+                    <div class="flex items-center gap-2 pt-1">
+                        <button onclick="setFilter('all')" id="filter-btn-all" class="flex-1 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white">全部紀錄</button>
+                        <button onclick="setFilter('frequent')" id="filter-btn-frequent" class="flex-1 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-400 border border-slate-700">🚨 僅顯示經常誤停</button>
+                    </div>
+                </div>
+
+                <!-- History Items Scroll List -->
+                <div id="full-history-container" class="space-y-2.5">
+                    <!-- Dynamic list items populated here -->
+                </div>
+            </section>
+
+            <!-- VIEW 3: ANALYTICS & FREQUENT OFFENDERS TAB -->
+            <section id="tab-analytics" class="hidden space-y-4">
+                
+                <!-- Summary Stats Widgets -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="glass-card rounded-2xl p-3.5 border-l-4 border-l-blue-500">
+                        <p class="text-xs text-slate-400">總記錄車次</p>
+                        <p id="stat-total-records" class="text-2xl font-black text-white mt-1">0</p>
+                    </div>
+                    <div class="glass-card rounded-2xl p-3.5 border-l-4 border-l-red-500">
+                        <p class="text-xs text-slate-400">經常誤停車輛 (≥2次)</p>
+                        <p id="stat-repeat-offenders" class="text-2xl font-black text-red-400 mt-1">0</p>
+                    </div>
+                </div>
+
+                <!-- Blacklist / Frequent Offenders Leaderboard -->
+                <div class="glass-card rounded-2xl p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-triangle-exclamation"></i> 經常誤停黑名單排行榜
+                        </h3>
+                        <span class="text-[10px] bg-red-950 text-red-300 border border-red-800/50 px-2 py-0.5 rounded-full">二次以上即列入</span>
+                    </div>
+
+                    <div id="offender-rankings-container" class="space-y-2">
+                        <!-- Rankings dynamic population -->
+                    </div>
+                </div>
+
+                <!-- Data Management Settings -->
+                <div class="glass-card rounded-2xl p-4 space-y-3">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-sliders"></i> 資料管理與工具
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="exportToCSV()" class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-file-csv text-emerald-400 text-sm"></i> 匯出 CSV 報表
+                        </button>
+                        <button onclick="promptClearWithPassword()" class="py-2.5 px-3 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-900/50 text-xs font-semibold text-red-300 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-lock text-red-400 text-sm"></i> 清空所有紀錄
+                        </button>
+                    </div>
+                </div>
+
+            </section>
+
+        </main>
+
+        <!-- iOS Style Bottom Tab Navigation Bar -->
+        <nav class="glass-card border-t border-slate-800 px-6 py-2.5 z-40 flex items-center justify-around">
+            <button id="nav-record" onclick="switchTab('record')" class="flex flex-col items-center gap-1 text-blue-400 transition-colors">
+                <i class="fa-solid fa-pen-to-square text-lg"></i>
+                <span class="text-[10px] font-medium">誤停登記</span>
+            </button>
+            <button id="nav-history" onclick="switchTab('history')" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors">
+                <i class="fa-solid fa-list-check text-lg"></i>
+                <span class="text-[10px] font-medium">歷史紀錄</span>
+            </button>
+            <button id="nav-analytics" onclick="switchTab('analytics')" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors">
+                <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                <span class="text-[10px] font-medium">常犯警示</span>
+            </button>
+        </nav>
+
+        <!-- Preset Editor Modal -->
+        <div id="preset-modal" class="hidden absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="glass-card bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-xs space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h4 id="preset-modal-title" class="text-sm font-bold text-white flex items-center gap-1.5">
+                        <i class="fa-solid fa-pen-to-square text-blue-400"></i> 編輯快捷選項
+                    </h4>
+                    <button onclick="closePresetModal()" class="text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Add New Tag Input -->
+                <div class="flex gap-2">
+                    <input type="text" id="new-preset-input" placeholder="輸入新快捷選項..." class="flex-1 text-xs py-2 px-3 rounded-xl glass-input text-slate-200 focus:outline-none border border-slate-700">
+                    <button onclick="addNewPresetTag()" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold">
+                        新增
+                    </button>
+                </div>
+
+                <!-- Tag List -->
+                <div id="preset-tags-list" class="space-y-1.5 max-h-48 overflow-y-auto no-scrollbar pt-1">
+                    <!-- Dynamic preset list -->
+                </div>
+
+                <button onclick="closePresetModal()" class="w-full py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">
+                    完成
+                </button>
+            </div>
+        </div>
+
+        <!-- Password Confirm Modal for Clearing All Data -->
+        <div id="password-modal" class="hidden absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="glass-card bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-xs space-y-4 text-center">
+                <div class="w-12 h-12 bg-red-950/80 border border-red-500/30 rounded-full flex items-center justify-center mx-auto text-red-400 text-xl">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <h4 class="text-base font-bold text-white">安全密碼驗證</h4>
+                    <p class="text-xs text-slate-400 mt-1">清空紀錄為高風險操作，請輸入管理密碼：</p>
+                </div>
+                <div>
+                    <input type="password" id="clear-password-input" placeholder="預設密碼: 0000" maxlength="8" 
+                        class="w-full text-center text-lg tracking-widest py-2 rounded-xl glass-input text-red-400 focus:outline-none border border-slate-700">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="closePasswordModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">取消</button>
+                    <button onclick="confirmClearWithPassword()" class="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold">確認清空</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Confirm Modal -->
+        <div id="custom-modal" class="hidden absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="glass-card bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-xs space-y-4 text-center">
+                <div class="w-12 h-12 bg-red-950/80 border border-red-500/30 rounded-full flex items-center justify-center mx-auto text-red-400 text-xl">
+                    <i id="modal-icon" class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                    <h4 id="modal-title" class="text-base font-bold text-white">確認操作</h4>
+                    <p id="modal-desc" class="text-xs text-slate-400 mt-1">您確定要執行這項操作嗎？</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="closeModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">取消</button>
+                    <button id="modal-confirm-btn" class="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold">確認執行</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Note Modal -->
+        <div id="edit-note-modal" class="hidden absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="glass-card bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-xs space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
+                        <i class="fa-solid fa-pen-to-square text-amber-400"></i> 編輯誤停備註
+                    </h4>
+                    <button onclick="closeEditNoteModal()" class="text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1">誤停備註 / 說明</label>
+                    <input type="text" id="edit-note-input" placeholder="例如：佔用充電格、跨線停放..." class="w-full text-xs py-2.5 px-3 rounded-xl glass-input text-slate-200 focus:outline-none border border-slate-700">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="closeEditNoteModal()" class="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">取消</button>
+                    <button onclick="saveEditedNote()" class="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold">儲存備註</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Toast Notification Component -->
+        <div id="toast-notification" class="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-900/95 backdrop-blur-md border border-slate-700/80 text-slate-100 shadow-2xl transition-all duration-300 opacity-0 pointer-events-none max-w-[90%] w-max">
+            <i id="toast-icon" class="fa-solid fa-circle-info text-blue-400 text-lg"></i>
+            <span id="toast-message" class="text-xs font-semibold tracking-wide"></span>
+        </div>
+
+    </div>
+
+    <script>
+        // Data Structure Keys
+        const STORAGE_KEY = 'parking_lot_check_records_v2';
+        const OWNER_PRESETS_KEY = 'parking_owner_presets_v1';
+        const NOTE_PRESETS_KEY = 'parking_note_presets_v1';
+        const THEME_KEY = 'parking_theme_preference_v1';
+        
+        // App State
+        let records = [];
+        let currentFilter = 'all';
+        let currentTab = 'record';
+        let activePresetType = 'owner'; // 'owner' or 'note'
+        let editingRecordId = null;
+
+        // Default Presets
+        let ownerPresets = ['黃大哥', '白小姐', '陳先生', '林先生', '訪客'];
+        let notePresets = ['⚡ 佔用充電格', '📐 跨線誤停', '⏱️ 超時未繳費', '🚫 無證停放'];
+
+        // Load data on startup
+        window.addEventListener('DOMContentLoaded', () => {
+            loadRecordsFromStorage();
+            loadPresetsFromStorage();
+            loadThemeFromStorage();
+            renderPresetButtons();
+            renderApp();
+        });
+
+        function loadThemeFromStorage() {
+            const savedTheme = localStorage.getItem(THEME_KEY);
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+                updateThemeButtonIcon('light');
+            } else {
+                document.body.classList.remove('light-mode');
+                updateThemeButtonIcon('dark');
+            }
+        }
+
+        function toggleTheme() {
+            const isLight = document.body.classList.toggle('light-mode');
+            localStorage.setItem(THEME_KEY, isLight ? 'light' : 'dark');
+            updateThemeButtonIcon(isLight ? 'light' : 'dark');
+            showToast(isLight ? '已切換為淺色模式' : '已切換為深色模式', 'info');
+        }
+
+        function updateThemeButtonIcon(theme) {
+            const btn = document.getElementById('theme-toggle-btn');
+            if (theme === 'light') {
+                btn.innerHTML = '<i class="fa-solid fa-moon text-sm text-indigo-400"></i>';
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-sun text-sm text-amber-400"></i>';
+            }
+        }
+
+        // Local Storage Handler
+        function loadRecordsFromStorage() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                records = stored ? JSON.parse(stored) : [];
+            } catch (e) {
+                console.error("無法讀取 LocalStorage:", e);
+                records = [];
+            }
+        }
+
+        function loadPresetsFromStorage() {
+            try {
+                const savedOwner = localStorage.getItem(OWNER_PRESETS_KEY);
+                if (savedOwner) ownerPresets = JSON.parse(savedOwner);
+
+                const savedNote = localStorage.getItem(NOTE_PRESETS_KEY);
+                if (savedNote) notePresets = JSON.parse(savedNote);
+            } catch (e) {
+                console.error("讀取快捷預設值失敗:", e);
+            }
+        }
+
+        function savePresetsToStorage() {
+            try {
+                localStorage.setItem(OWNER_PRESETS_KEY, JSON.stringify(ownerPresets));
+                localStorage.setItem(NOTE_PRESETS_KEY, JSON.stringify(notePresets));
+            } catch (e) {
+                showToast("快捷選項儲存失敗", "error");
+            }
+        }
+
+        function saveRecordsToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+            } catch (e) {
+                showToast("資料儲存失敗，請檢查空間", "error");
+            }
+        }
+
+        // Format License Plate String & Force Uppercase
+        function normalizePlate(plate) {
+            return plate.replace(/[\s-]/g, '').toUpperCase();
+        }
+
+        function handlePlateInputChange(input) {
+            /* Force English characters to UPPERCASE instantly */
+            input.value = input.value.toUpperCase();
+            
+            const rawValue = input.value;
+            const normalized = normalizePlate(rawValue);
+            const statusElem = document.getElementById('live-check-status');
+            const warningBox = document.getElementById('duplicate-warning');
+
+            if (!normalized) {
+                statusElem.textContent = '等待輸入...';
+                statusElem.className = 'text-xs font-medium text-slate-500';
+                warningBox.classList.add('hidden');
+                return;
+            }
+
+            // Find matching entries in database
+            const matches = records.filter(r => normalizePlate(r.plate) === normalized);
+            const count = matches.length;
+
+            if (count > 0) {
+                // Frequent Offender Alert
+                statusElem.textContent = `⚠ 已有 ${count} 次誤停紀錄`;
+                statusElem.className = 'text-xs font-bold text-red-400';
+
+                // Update Warning Box
+                warningBox.classList.remove('hidden');
+                document.getElementById('warning-badge-count').textContent = `已紀錄 ${count} 次`;
+                
+                // Construct previous records summary
+                const lastRecord = matches[0];
+                const timeAgo = formatTimeAgo(lastRecord.timestamp);
+                const exactTime = formatDateTime(lastRecord.timestamp);
+                const ownerText = lastRecord.owner ? `【${lastRecord.owner}】` : '';
+                const noteText = lastRecord.note ? `<br>最近備註：<span class="text-amber-300 font-medium">${lastRecord.note}</span>` : '';
+                document.getElementById('warning-details').innerHTML = 
+                    `歷史車主紀錄：<strong>${ownerText || '未註記'}</strong>。<br>上次登錄於 <strong>${exactTime}</strong> (${timeAgo})。${noteText}<br>系統判定為經常誤停車輛！`;
+            } else {
+                statusElem.textContent = '✨ 首次登記車輛';
+                statusElem.className = 'text-xs font-medium text-emerald-400';
+                warningBox.classList.add('hidden');
+            }
+        }
+
+        function renderPresetButtons() {
+            const ownerContainer = document.getElementById('owner-presets-container');
+            ownerContainer.innerHTML = ownerPresets.map(tag => 
+                `<button type="button" onclick="setOwnerPreset('${tag}')" class="px-2 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">${tag}</button>`
+            ).join('');
+
+            const noteContainer = document.getElementById('note-presets-container');
+            noteContainer.innerHTML = notePresets.map(tag => 
+                `<button type="button" onclick="setNotePreset('${tag}')" class="px-2 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300/90 border border-slate-700">${tag}</button>`
+            ).join('');
+        }
+
+        function openPresetModal(type) {
+            activePresetType = type;
+            const modal = document.getElementById('preset-modal');
+            const title = document.getElementById('preset-modal-title');
+            
+            if (type === 'owner') {
+                title.innerHTML = '<i class="fa-solid fa-user text-blue-400"></i> 編輯【車主稱呼】快捷';
+            } else {
+                title.innerHTML = '<i class="fa-solid fa-note-sticky text-amber-400"></i> 編輯【誤停備註】快捷';
+            }
+
+            renderPresetTagsList();
+            modal.classList.remove('hidden');
+        }
+
+        function closePresetModal() {
+            document.getElementById('preset-modal').classList.add('hidden');
+            document.getElementById('new-preset-input').value = '';
+            renderPresetButtons();
+        }
+
+        function renderPresetTagsList() {
+            const container = document.getElementById('preset-tags-list');
+            const tags = activePresetType === 'owner' ? ownerPresets : notePresets;
+
+            if (tags.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-2">目前沒有自訂快捷選項</p>`;
+                return;
+            }
+
+            container.innerHTML = tags.map((tag, idx) => `
+                <div class="flex items-center justify-between p-2 rounded-lg bg-slate-800 text-xs">
+                    <span class="text-slate-200 font-medium">${tag}</span>
+                    <button onclick="deletePresetTag(${idx})" class="text-slate-500 hover:text-red-400 px-1.5 py-0.5">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function addNewPresetTag() {
+            const input = document.getElementById('new-preset-input');
+            const val = input.value.trim();
+
+            if (!val) {
+                showToast("請輸入快捷標籤內容", "warning");
+                return;
+            }
+
+            if (activePresetType === 'owner') {
+                if (ownerPresets.includes(val)) return showToast("該稱呼已存在", "warning");
+                ownerPresets.push(val);
+            } else {
+                if (notePresets.includes(val)) return showToast("該備註已存在", "warning");
+                notePresets.push(val);
+            }
+
+            savePresetsToStorage();
+            input.value = '';
+            renderPresetTagsList();
+            showToast("已新增快捷選項", "success");
+        }
+
+        function deletePresetTag(index) {
+            if (activePresetType === 'owner') {
+                ownerPresets.splice(index, 1);
+            } else {
+                notePresets.splice(index, 1);
+            }
+            savePresetsToStorage();
+            renderPresetTagsList();
+            showToast("已移除快捷選項", "info");
+        }
+
+        // Quick Preset Owner Title Setter
+        function setOwnerPreset(text) {
+            document.getElementById('owner-input').value = text;
+        }
+
+        // Quick Preset Note Setter
+        function setNotePreset(text) {
+            document.getElementById('note-input').value = text;
+        }
+
+        function clearPlateInput() {
+            document.getElementById('plate-input').value = '';
+            handlePlateInputChange(document.getElementById('plate-input'));
+        }
+
+        function submitRecord() {
+            const plateInput = document.getElementById('plate-input');
+            const ownerInput = document.getElementById('owner-input');
+            const noteInput = document.getElementById('note-input');
+
+            const rawPlate = plateInput.value.trim();
+            const owner = ownerInput.value.trim();
+            const note = noteInput ? noteInput.value.trim() : '';
+
+            if (!rawPlate) {
+                showToast("請先輸入車牌號碼！", "warning");
+                plateInput.focus();
+                return;
+            }
+
+            const formattedPlate = rawPlate.toUpperCase();
+            const normalized = normalizePlate(formattedPlate);
+
+            // Count existing occurrences BEFORE adding new one
+            const existingMatches = records.filter(r => normalizePlate(r.plate) === normalized);
+            const previousCount = existingMatches.length;
+
+            // Create New Record Object
+            const newRecord = {
+                id: 'REC_' + Date.now(),
+                plate: formattedPlate,
+                owner: owner || '未具名',
+                note: note || '',
+                timestamp: new Date().toISOString()
+            };
+
+            // Insert at beginning of array
+            records.unshift(newRecord);
+            saveRecordsToStorage();
+
+            // Clear Inputs
+            plateInput.value = '';
+            ownerInput.value = '';
+            if (noteInput) noteInput.value = '';
+            handlePlateInputChange(plateInput);
+
+            // Re-render views
+            renderApp();
+
+            // Toast Alert Feedback
+            if (previousCount >= 1) {
+                showToast(`🚨 經常誤停警告！該車累積登記 ${previousCount + 1} 次`, "error");
+            } else {
+                showToast("✅ 車牌首次紀錄登記成功", "success");
+            }
+        }
+
+        function promptClearWithPassword() {
+            document.getElementById('clear-password-input').value = '';
+            document.getElementById('password-modal').classList.remove('hidden');
+        }
+
+        function closePasswordModal() {
+            document.getElementById('password-modal').classList.add('hidden');
+        }
+
+        function confirmClearWithPassword() {
+            const pwdInput = document.getElementById('clear-password-input').value;
+            if (pwdInput === '0000') {
+                records = [];
+                saveRecordsToStorage();
+                renderApp();
+                closePasswordModal();
+                showToast("所有紀錄已成功清空！", "info");
+            } else {
+                showToast("密碼錯誤！無法清空資料", "error");
+            }
+        }
+
+        // Delete Individual Record
+        function deleteRecord(id) {
+            openModal("刪除紀錄", "您確定要移除這筆紀錄嗎？此動作無法復原。", () => {
+                records = records.filter(r => r.id !== id);
+                saveRecordsToStorage();
+                renderApp();
+                showToast("已刪除該筆紀錄", "info");
+            });
+        }
+
+        // Edit Note Modal Handlers
+        function openEditNoteModal(id) {
+            const rec = records.find(r => r.id === id);
+            if (!rec) return;
+            editingRecordId = id;
+            document.getElementById('edit-note-input').value = rec.note || '';
+            document.getElementById('edit-note-modal').classList.remove('hidden');
+        }
+
+        function closeEditNoteModal() {
+            document.getElementById('edit-note-modal').classList.add('hidden');
+            editingRecordId = null;
+        }
+
+        function saveEditedNote() {
+            if (!editingRecordId) return;
+            const rec = records.find(r => r.id === editingRecordId);
+            if (rec) {
+                const newNote = document.getElementById('edit-note-input').value.trim();
+                rec.note = newNote;
+                saveRecordsToStorage();
+                renderApp();
+                showToast("已成功更新誤停備註", "success");
+            }
+            closeEditNoteModal();
+        }
+
+        function renderApp() {
+            renderRecentList();
+            renderHistoryList();
+            renderAnalytics();
+        }
+
+        // Render Recent 3 List on Tab 1
+        function renderRecentList() {
+            const container = document.getElementById('recent-list-container');
+            document.getElementById('total-count-badge').textContent = `共 ${records.length} 筆`;
+
+            if (records.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-6 text-slate-500 text-xs">
+                        <i class="fa-solid fa-clipboard-list text-2xl mb-2 block opacity-40"></i>
+                        目前尚無誤停登記紀錄
+                    </div>`;
+                return;
+            }
+
+            const recent = records.slice(0, 3);
+            container.innerHTML = recent.map(r => {
+                const samePlateCount = records.filter(item => normalizePlate(item.plate) === normalizePlate(r.plate)).length;
+                const isRepeat = samePlateCount > 1;
+                const noteHtml = r.note 
+                    ? `<p onclick="openEditNoteModal('${r.id}')" class="text-[11px] text-amber-300/90 font-medium flex items-center gap-1 mt-0.5 cursor-pointer hover:underline" title="點擊編輯備註"><i class="fa-solid fa-tag text-[9px]"></i> 備註：${r.note} <i class="fa-solid fa-pen text-[9px] text-slate-500 ml-0.5"></i></p>` 
+                    : `<p onclick="openEditNoteModal('${r.id}')" class="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5 cursor-pointer hover:text-amber-300" title="點擊新增備註"><i class="fa-solid fa-plus text-[9px]"></i> 新增備註</p>`;
+
+                return `
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
+                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                            <div class="w-9 h-9 rounded-lg ${isRepeat ? 'bg-red-950/80 border border-red-500/40 text-red-400' : 'bg-slate-800 text-slate-300'} flex items-center justify-center font-bold text-xs shrink-0">
+                                ${isRepeat ? '🚨' : '🚘'}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-sm text-slate-100 tracking-wider">${r.plate}</span>
+                                    ${isRepeat ? `<span class="bg-red-600/30 text-red-300 border border-red-500/30 text-[10px] px-1.5 py-0.2 rounded shrink-0">經常誤停 (${samePlateCount}次)</span>` : ''}
+                                </div>
+                                <p class="text-[11px] text-slate-400">車主：${r.owner} • <span class="text-slate-400"><i class="fa-regular fa-calendar-days text-[10px] mr-1"></i>${formatDateTime(r.timestamp)}</span></p>
+                                ${noteHtml}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-0.5 ml-2">
+                            <button onclick="openEditNoteModal('${r.id}')" title="編輯備註" class="text-slate-500 hover:text-amber-400 p-2 text-xs">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button onclick="deleteRecord('${r.id}')" title="刪除紀錄" class="text-slate-600 hover:text-red-400 p-2 text-xs">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Render Full History Tab
+        function renderHistoryList() {
+            const container = document.getElementById('full-history-container');
+            const searchKeyword = (document.getElementById('search-input')?.value || '').toLowerCase();
+
+            // Frequency map calculation
+            const plateCounts = {};
+            records.forEach(r => {
+                const norm = normalizePlate(r.plate);
+                plateCounts[norm] = (plateCounts[norm] || 0) + 1;
+            });
+
+            let filtered = records.filter(r => {
+                const matchesSearch = r.plate.toLowerCase().includes(searchKeyword) || 
+                                     (r.owner && r.owner.toLowerCase().includes(searchKeyword)) ||
+                                     (r.note && r.note.toLowerCase().includes(searchKeyword));
+                if (currentFilter === 'frequent') {
+                    return matchesSearch && plateCounts[normalizePlate(r.plate)] > 1;
+                }
+                return matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="glass-card rounded-2xl text-center py-12 text-slate-500 text-xs">
+                        <i class="fa-solid fa-magnifying-glass text-3xl mb-2 text-slate-600 block"></i>
+                        找不到符合條件的車牌紀錄
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(r => {
+                const count = plateCounts[normalizePlate(r.plate)];
+                const isFrequent = count > 1;
+                const noteBadge = r.note 
+                    ? `<div onclick="openEditNoteModal('${r.id}')" class="mt-1 text-xs text-amber-300 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/30 px-2 py-1 rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors" title="點擊修改備註"><i class="fa-solid fa-note-sticky text-amber-400 text-xs"></i> 備註：${r.note} <i class="fa-solid fa-pen text-[10px] text-amber-400/70 ml-auto"></i></div>` 
+                    : `<button onclick="openEditNoteModal('${r.id}')" class="mt-1 text-[11px] text-slate-400 hover:text-amber-300 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 px-2 py-0.5 rounded-lg flex items-center gap-1 cursor-pointer transition-colors"><i class="fa-solid fa-plus text-[10px]"></i> 新增備註</button>`;
+
+                return `
+                    <div class="glass-card rounded-xl p-3 flex items-center justify-between border-l-4 ${isFrequent ? 'border-l-red-500' : 'border-l-slate-600'}">
+                        <div class="space-y-1 flex-1 mr-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-base font-black tracking-wider text-amber-300">${r.plate}</span>
+                                ${isFrequent ? `<span class="bg-red-500 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full">經常誤停 ${count} 次</span>` : '<span class="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-full">首次紀錄</span>'}
+                            </div>
+                            <p class="text-xs text-slate-300"><i class="fa-solid fa-user text-slate-500 mr-1"></i>${r.owner}</p>
+                            <p class="text-[11px] text-slate-400"><i class="fa-regular fa-clock text-slate-400 mr-1"></i>登記時間：<span class="text-slate-200 font-medium">${formatDateTime(r.timestamp)}</span> <span class="text-slate-500">(${formatTimeAgo(r.timestamp)})</span></p>
+                            ${noteBadge}
+                        </div>
+                        <div class="flex flex-col gap-1.5 justify-center">
+                            <button onclick="openEditNoteModal('${r.id}')" title="編輯備註" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-amber-950/80 text-slate-400 hover:text-amber-400 flex items-center justify-center transition-colors">
+                                <i class="fa-solid fa-pen-to-square text-xs"></i>
+                            </button>
+                            <button onclick="deleteRecord('${r.id}')" title="刪除紀錄" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-red-950/80 text-slate-400 hover:text-red-400 flex items-center justify-center transition-colors">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderAnalytics() {
+            // Calculate Total Stats
+            document.getElementById('stat-total-records').textContent = records.length;
+
+            const countsMap = {};
+            records.forEach(r => {
+                const norm = normalizePlate(r.plate);
+                if (!countsMap[norm]) {
+                    countsMap[norm] = { plate: r.plate, count: 0, latestOwner: r.owner, latestTime: r.timestamp };
+                }
+                countsMap[norm].count += 1;
+                countsMap[norm].latestOwner = r.owner || countsMap[norm].latestOwner;
+            });
+
+            const offenderList = Object.values(countsMap)
+                .filter(item => item.count >= 2)
+                .sort((a, b) => b.count - a.count);
+
+            document.getElementById('stat-repeat-offenders').textContent = offenderList.length;
+
+            const rankingContainer = document.getElementById('offender-rankings-container');
+            
+            if (offenderList.length === 0) {
+                rankingContainer.innerHTML = `
+                    <div class="text-center py-8 text-slate-500 text-xs">
+                        <i class="fa-solid fa-shield-cat text-3xl mb-2 text-emerald-500/50 block"></i>
+                        目前尚無累積誤停 2 次以上的經常誤停車輛。
+                    </div>`;
+                return;
+            }
+
+            rankingContainer.innerHTML = offenderList.map((item, index) => {
+                let medalColor = 'bg-slate-800 text-slate-400';
+                if (index === 0) medalColor = 'bg-amber-500 text-slate-950 font-black';
+                if (index === 1) medalColor = 'bg-slate-300 text-slate-950 font-black';
+                if (index === 2) medalColor = 'bg-amber-700 text-white font-black';
+
+                return `
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <div class="w-6 h-6 rounded-full ${medalColor} text-xs flex items-center justify-center">
+                                ${index + 1}
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-white tracking-wider">${item.plate}</p>
+                                <p class="text-[10px] text-slate-400">稱呼：${item.latestOwner}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs font-black text-red-400 bg-red-950/80 px-2.5 py-1 rounded-lg border border-red-800/40">
+                                誤停 ${item.count} 次
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function exportToCSV() {
+            if (records.length === 0) {
+                showToast("目前沒有資料可供匯出！", "warning");
+                return;
+            }
+
+            let csvContent = "\uFEFF車牌號碼,車主稱呼/姓氏,誤停備註,登記日期與時間\n";
+            records.forEach(r => {
+                const noteVal = (r.note || '').replace(/"/g, '""');
+                csvContent += `"${r.plate}","${r.owner}","${noteVal}","${formatDateTime(r.timestamp)}"\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `停車場誤停紀錄_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast("已產生並下載 CSV 報表", "success");
+        }
+
+        // Load Mock Data for Demo
+        function loadDemoData() {
+            openModal("載入測試資料", "這將會新增範例車牌資料（包含多次誤停與備註的黃大哥、白小姐等），確定載入？", () => {
+                const demoPlates = [
+                    { plate: "ABC1234", owner: "黃大哥", note: "佔用充電格" },
+                    { plate: "XYZ5678", owner: "白小姐", note: "超時停放" },
+                    { plate: "ABC1234", owner: "黃大哥", note: "跨線誤停" },
+                    { plate: "DEF9999", owner: "陳先生", note: "無證停放" },
+                    { plate: "ABC1234", owner: "黃大哥", note: "占用貴賓車位" },
+                    { plate: "XYZ5678", owner: "白小姐", note: "未依規定停放" }
+                ];
+
+                const now = Date.now();
+                demoPlates.forEach((item, idx) => {
+                    records.unshift({
+                        id: 'DEMO_' + (now - idx * 3600000),
+                        plate: item.plate,
+                        owner: item.owner,
+                        note: item.note,
+                        timestamp: new Date(now - idx * 3600000).toISOString()
+                    });
+                });
+
+                saveRecordsToStorage();
+                renderApp();
+                showToast("已成功載入測試資料！", "success");
+            });
+        }
+
+        function confirmClearAllData() {
+            openModal("清空所有紀錄", "⚠️ 警告：這將會清除手機中儲存的所有車牌紀錄，無法復原！", () => {
+                records = [];
+                saveRecordsToStorage();
+                renderApp();
+                showToast("所有紀錄已清空", "info");
+            });
+        }
+
+        // Navigation Tabs Controller
+        function switchTab(tab) {
+            currentTab = tab;
+            const tabNames = ['record', 'history', 'analytics'];
+            
+            tabNames.forEach(t => {
+                const tabSection = document.getElementById(`tab-${t}`);
+                const navBtn = document.getElementById(`nav-${t}`);
+                if (tabSection) tabSection.classList.add('hidden');
+                if (navBtn) navBtn.className = 'flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors';
+            });
+
+            const activeTabSection = document.getElementById(`tab-${tab}`);
+            const activeNavBtn = document.getElementById(`nav-${tab}`);
+
+            if (activeTabSection) activeTabSection.classList.remove('hidden');
+            if (activeNavBtn) activeNavBtn.className = 'flex flex-col items-center gap-1 text-blue-400 transition-colors';
+
+            if (tab === 'history') renderHistoryList();
+            if (tab === 'analytics') renderAnalytics();
+        }
+
+        function setFilter(type) {
+            currentFilter = type;
+            const btnAll = document.getElementById('filter-btn-all');
+            const btnFreq = document.getElementById('filter-btn-frequent');
+
+            if (type === 'all') {
+                btnAll.className = 'flex-1 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white';
+                btnFreq.className = 'flex-1 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-400 border border-slate-700';
+            } else {
+                btnFreq.className = 'flex-1 py-1.5 text-xs font-medium rounded-lg bg-red-600 text-white';
+                btnAll.className = 'flex-1 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-400 border border-slate-700';
+            }
+            renderHistoryList();
+        }
+
+        function filterHistoryList() {
+            renderHistoryList();
+        }
+
+        function formatDateTime(isoString) {
+            const d = new Date(isoString);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const hours = String(d.getHours()).padStart(2, '0');
+            const mins = String(d.getMinutes()).padStart(2, '0');
+            return `${year}/${month}/${day} ${hours}:${mins}`;
+        }
+
+        function formatTimeAgo(isoString) {
+            const diffSec = Math.floor((new Date() - new Date(isoString)) / 1000);
+            if (diffSec < 60) return '剛剛';
+            if (diffSec < 3600) return `${Math.floor(diffSec / 60)} 分鐘前`;
+            if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} 小時前`;
+            return `${Math.floor(diffSec / 86400)} 天前`;
+        }
+
+        // Custom Toast Notification Function
+        let toastTimeout;
+        function showToast(msg, type = "info") {
+            const toast = document.getElementById('toast-notification');
+            const icon = document.getElementById('toast-icon');
+            const message = document.getElementById('toast-message');
+
+            // Defensive check to avoid runtime TypeError if DOM elements are missing
+            if (!toast || !icon || !message) {
+                console.warn("Toast elements missing from DOM:", msg);
+                return;
+            }
+
+            message.textContent = msg;
+
+            if (type === 'success') {
+                icon.className = 'fa-solid fa-circle-check text-emerald-400 text-lg';
+            } else if (type === 'error') {
+                icon.className = 'fa-solid fa-triangle-exclamation text-red-400 text-lg';
+            } else if (type === 'warning') {
+                icon.className = 'fa-solid fa-circle-exclamation text-amber-400 text-lg';
+            } else {
+                icon.className = 'fa-solid fa-circle-info text-blue-400 text-lg';
+            }
+
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            toast.classList.add('opacity-100');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+
+        // Custom Modal Function (Replaces confirm)
+        let modalConfirmCallback = null;
+        function openModal(title, desc, onConfirm) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-desc').textContent = desc;
+            modalConfirmCallback = onConfirm;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+            modalConfirmCallback = null;
+        }
+
+        document.getElementById('modal-confirm-btn').addEventListener('click', () => {
+            if (modalConfirmCallback) modalConfirmCallback();
+            closeModal();
+        });
+    </script>
+</body>
+</html>
